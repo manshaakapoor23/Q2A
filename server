@@ -1,0 +1,112 @@
+/************************************************************/
+/* This is a stream socket server sample program for UNIX   */
+/* domain sockets. This program listens for a connection    */
+/* from a client program, accepts it, reads data from the   */
+/* client, then sends data back to connected UNIX socket.   */
+/************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#define SOCK_PATH  "tpf_unix_sock.server"
+#define DATA "Hello from the server!!!"
+
+int main(){
+
+    int server, client, length, r;
+    int bytes = 0;
+    struct sockaddr_un server_addr;
+    struct sockaddr_un client_addr;
+    char buf[256];
+    int backlog = 10;
+    memset(&server_addr, 0, sizeof(struct sockaddr_un));
+    memset(&client_addr, 0, sizeof(struct sockaddr_un));
+    memset(buf, 0, 256);
+
+    // Creating a UNIX domain stream socket 
+    server = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server == -1){
+        printf("SOCKET ERROR!!! \n");    
+        exit(1);
+    }
+
+    server_addr.sun_family = AF_UNIX;
+    strcpy(server_addr.sun_path, SOCK_PATH);
+    length = sizeof(server_addr);
+
+    unlink(SOCK_PATH);
+    r = bind(server, (struct sockaddr *) &server_addr, length);  // binding the socket
+    if (r == -1){
+        printf("BIND ERROR!!! \n");
+        close(server);
+        exit(1);
+    }
+
+    r = listen(server, backlog);
+    if (rc == -1){
+        printf("LISTEN ERROR!!!"); // listening for client requests
+        close(server);
+        exit(1);
+    }
+    printf("SOCKET LISTENING!!!\n");
+
+   
+    // Accept an incoming connection 
+    client = accept(server, (struct sockaddr *) &client_addr, (socklen_t *) &length);  // accepting a particulr cleint request
+    if (client == -1){
+        printf("ACCEPT ERROR!!!");    
+        close(server);
+        close(client);
+        exit(1);
+    }
+
+    
+    // Getting the name of the connected socket 
+    length = sizeof(client_addr);
+    r = getpeername(client, (struct sockaddr *) &client_addr,(socklen_t *) &length);
+    if (r == -1){
+        printf("GETPEERNAME ERROR!!!");
+        close(server);
+        close(client);
+        exit(1);
+    }
+    else {
+        printf("CLIENT SOCKET FILEPATH : %s\n", client_addr.sun_path);
+    }
+
+    
+    printf(" WAITING TO READ...\n");
+    bytes = recv(client, buf, sizeof(buf), 0);
+    if (bytes == -1){
+        printf("RECV ERROR");
+        close(server);
+        close(client);
+        exit(1);
+    }
+    else {
+        printf("DATA RECEIVED = %s\n", buf);
+    }
+
+    memset(buf, 0, 256);
+    strcpy(buf, DATA);
+    printf("SENDING DATA...\n");
+    r = send(client, buf, strlen(buf), 0);
+    if (r == -1) {
+        printf("SEND ERROR!!!");
+        close(server);
+        close(client);
+        exit(1);
+    }
+    else {
+        printf("DATA SENT!!!\n");
+    }
+
+    close(server);
+    close(client);
+
+    return 0;
+}
